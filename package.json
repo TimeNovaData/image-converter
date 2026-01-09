@@ -21,10 +21,6 @@
     "sharp": "^0.33.2"
   },
   "build": {
-    "asar": true,
-    "asarUnpack": [
-      "node_modules/sharp/**/*"
-    ],
     "appId": "com.novadata.imageconverter",
     "productName": "Image Converter",
     "directories": {
@@ -61,12 +57,15 @@
         }
       ],
       "icon": "icon.png",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "asar": true,
+      "asarUnpack": ["node_modules/sharp/**/*"]
     },
     "linux": {
       "target": ["AppImage", "tar.gz"],
       "icon": "icon.png",
-      "category": "Graphics"
+      "category": "Graphics",
+      "asar": false
     },
     "portable": {
       "artifactName": "${productName}-Portable-${version}.${ext}"
