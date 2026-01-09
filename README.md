@@ -1,5 +1,5 @@
 # 🖼️ Image Converter
-
+![alt text](image.png)
 Conversor de imagens com interface gráfica simples, desenvolvido com Electron e Sharp.
 
 ## ✨ Funcionalidades
