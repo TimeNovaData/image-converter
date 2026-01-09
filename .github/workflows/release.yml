@@ -29,8 +29,17 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install Linux dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips-dev
+
       - name: Install dependencies
-        run: npm install
+        run: npm install --include=optional
+
+      - name: Rebuild native modules for platform
+        run: npm rebuild sharp
 
       - name: Build for ${{ matrix.platform }}
         run: npm run build:${{ matrix.platform }}
