@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+bun.lockb
+
+# Build output
+dist/
+out/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Electron
+.electron/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Environment
+.env
+.env.local
+.env.*.local

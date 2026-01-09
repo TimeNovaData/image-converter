@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Converter - NovaData</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🖼️ Image Converter</h1>
+      <p class="subtitle">Converta e otimize suas imagens facilmente</p>
+    </header>
+
+    <main>
+      <!-- Seleção de Pastas -->
+      <section class="folder-section">
+        <div class="folder-box">
+          <label>📂 Pasta de Entrada</label>
+          <div class="folder-input">
+            <input type="text" id="inputFolder" placeholder="Selecione a pasta com as imagens..." readonly>
+            <button id="btnSelectInput" class="btn btn-secondary">Selecionar</button>
+            <button id="btnOpenInput" class="btn btn-icon" title="Abrir no Explorer" disabled>📁</button>
+          </div>
+        </div>
+
+        <div class="folder-box">
+          <label>📁 Pasta de Saída</label>
+          <div class="folder-input">
+            <input type="text" id="outputFolder" placeholder="Selecione onde salvar as imagens..." readonly>
+            <button id="btnSelectOutput" class="btn btn-secondary">Selecionar</button>
+            <button id="btnOpenOutput" class="btn btn-icon" title="Abrir no Explorer" disabled>📁</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Opções de Conversão -->
+      <section class="options-section">
+        <h2>⚙️ Opções de Conversão</h2>
+        
+        <div class="options-grid">
+          <div class="option-box">
+            <label>Formato de Saída</label>
+            <select id="format">
+              <option value="webp">WebP (Recomendado)</option>
+              <option value="jpg">JPEG</option>
+              <option value="png">PNG</option>
+              <option value="original">Manter Original</option>
+            </select>
+          </div>
+
+          <div class="option-box">
+            <label>Tamanho Máximo (px)</label>
+            <select id="maxSize">
+              <option value="">Sem limite</option>
+              <option value="3840">4K (3840px)</option>
+              <option value="2560">2K (2560px)</option>
+              <option value="1920" selected>Full HD (1920px)</option>
+              <option value="1280">HD (1280px)</option>
+              <option value="800">800px</option>
+              <option value="600">600px</option>
+              <option value="400">400px</option>
+              <option value="custom">Personalizado...</option>
+            </select>
+            <input type="number" id="customSize" class="custom-size-input" placeholder="Ex: 1024" min="50" max="10000" style="display: none;">
+          </div>
+
+          <div class="option-box">
+            <label>Qualidade: <span id="qualityValue">90</span>%</label>
+            <input type="range" id="quality" min="10" max="100" value="90">
+          </div>
+        </div>
+      </section>
+
+      <!-- Botão de Conversão -->
+      <section class="action-section">
+        <button id="btnConvert" class="btn btn-primary btn-large" disabled>
+          🚀 Converter Imagens
+        </button>
+      </section>
+
+      <!-- Progresso -->
+      <section class="progress-section" id="progressSection" style="display: none;">
+        <h2>📊 Progresso</h2>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <p id="progressText">Preparando...</p>
+      </section>
+
+      <!-- Resultados -->
+      <section class="results-section" id="resultsSection" style="display: none;">
+        <h2>✅ Resultados</h2>
+        <div class="summary" id="summary"></div>
+        <div class="results-table-container">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Arquivo</th>
+                <th>Original</th>
+                <th>Convertido</th>
+                <th>Economia</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Made with ❤️ by Novadata</p>
+    </footer>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
