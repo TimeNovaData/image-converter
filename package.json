@@ -4,13 +4,12 @@
   "description": "Conversor de imagens com interface gráfica",
   "main": "main.js",
   "scripts": {
-    "start": "bunx electron .",
-    "dev": "bunx electron .",
+    "start": "electron .",
+    "dev": "electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux",
-    "build:all": "electron-builder --win --mac --linux"
+    "build:all": "electron-builder --win --linux"
   },
   "author": "NovaData",
   "license": "MIT",
@@ -22,6 +21,7 @@
     "sharp": "^0.33.2"
   },
   "build": {
+    "asar": true,
     "appId": "com.novadata.imageconverter",
     "productName": "Image Converter",
     "directories": {
@@ -30,38 +30,43 @@
     "files": [
       "**/*",
       "!dist/**",
+      "!release/**",
+      "!.git/**",
+      "!.github/**",
+      "!.vscode/**",
+      "!*.md",
+      "!*.log",
+      "!*.svg",
+      "!generate-icons.js",
+      "!icon-256.png",
       "!node_modules/**/README*",
       "!node_modules/**/CHANGELOG*",
-      "!node_modules/**/test/**"
+      "!node_modules/**/test/**",
+      "!node_modules/**/docs/**",
+      "!node_modules/**/*.md",
+      "!node_modules/**/*.ts",
+      "!node_modules/**/*.map",
+      "!node_modules/**/LICENSE*",
+      "!node_modules/**/.github/**"
     ],
+    "compression": "maximum",
     "win": {
       "target": [
-        {
-          "target": "nsis",
-          "arch": ["x64"]
-        },
         {
           "target": "portable",
           "arch": ["x64"]
         }
       ],
-      "icon": "icon.png"
-    },
-    "mac": {
-      "target": ["dmg", "zip"],
       "icon": "icon.png",
-      "category": "public.app-category.graphics-design"
+      "signAndEditExecutable": false
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": ["AppImage", "tar.gz"],
       "icon": "icon.png",
       "category": "Graphics"
     },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
     }
   }
 }

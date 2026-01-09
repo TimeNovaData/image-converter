@@ -66,7 +66,7 @@ ipcMain.handle('select-output-folder', async () => {
 
 // Handler para processar imagens
 ipcMain.handle('process-images', async (event, options) => {
-  const { inputFolder, outputFolder, format, maxSize, quality } = options
+  const { inputFolder, outputFolder, format, maxSize, quality, keepStructure } = options
   
   try {
     // Criar pasta de saída se não existir
@@ -79,7 +79,7 @@ ipcMain.handle('process-images', async (event, options) => {
     
     for (let i = 0; i < images.length; i++) {
       const imagePath = images[i]
-      const result = await processImage(imagePath, outputFolder, format, maxSize, quality)
+      const result = await processImage(imagePath, inputFolder, outputFolder, format, maxSize, quality, keepStructure)
       results.push(result)
       
       // Enviar progresso
@@ -116,7 +116,7 @@ function getImagesFromFolder(folder, resultado = []) {
   return resultado
 }
 
-async function processImage(imagePath, outputFolder, format, maxSize, quality) {
+async function processImage(imagePath, inputFolder, outputFolder, format, maxSize, quality, keepStructure) {
   const fileName = path.basename(imagePath)
   const nameWithoutExt = path.parse(fileName).name
   const originalExt = path.extname(fileName).toLowerCase()
@@ -132,7 +132,20 @@ async function processImage(imagePath, outputFolder, format, maxSize, quality) {
   }
   // format === 'original' mantém a extensão original
   
-  const outputPath = path.join(outputFolder, nameWithoutExt + outputExt)
+  // Determinar pasta de saída (mantendo estrutura ou não)
+  let finalOutputFolder = outputFolder
+  if (keepStructure) {
+    const relativePath = path.relative(inputFolder, path.dirname(imagePath))
+    if (relativePath) {
+      finalOutputFolder = path.join(outputFolder, relativePath)
+      // Criar subpasta se não existir
+      if (!fs.existsSync(finalOutputFolder)) {
+        fs.mkdirSync(finalOutputFolder, { recursive: true })
+      }
+    }
+  }
+  
+  const outputPath = path.join(finalOutputFolder, nameWithoutExt + outputExt)
   
   // Obter tamanho original
   const statsOriginal = fs.statSync(imagePath)

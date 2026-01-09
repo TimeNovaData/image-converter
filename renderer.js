@@ -11,6 +11,7 @@ const maxSizeEl = document.getElementById('maxSize')
 const customSizeEl = document.getElementById('customSize')
 const qualityEl = document.getElementById('quality')
 const qualityValueEl = document.getElementById('qualityValue')
+const keepStructureEl = document.getElementById('keepStructure')
 const progressSection = document.getElementById('progressSection')
 const progressFill = document.getElementById('progressFill')
 const progressText = document.getElementById('progressText')
@@ -96,7 +97,8 @@ async function startConversion() {
     outputFolder,
     format: formatEl.value,
     maxSize,
-    quality: parseInt(qualityEl.value)
+    quality: parseInt(qualityEl.value),
+    keepStructure: keepStructureEl.checked
   }
   
   try {
