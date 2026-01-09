@@ -35,10 +35,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libvips-dev libvips42
 
-      - name: Clean and install dependencies
+      - name: Clean node_modules (Linux)
+        if: matrix.platform == 'linux'
+        run: rm -rf node_modules package-lock.json
+
+      - name: Clean node_modules (Windows)
+        if: matrix.platform == 'win'
         run: |
-          rm -rf node_modules package-lock.json
-          npm install
+          if (Test-Path node_modules) { Remove-Item -Recurse -Force node_modules }
+          if (Test-Path package-lock.json) { Remove-Item -Force package-lock.json }
+        shell: pwsh
+
+      - name: Install dependencies
+        run: npm install
 
       - name: Build for ${{ matrix.platform }}
         run: npm run build:${{ matrix.platform }}
