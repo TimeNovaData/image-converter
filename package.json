@@ -1,6 +1,6 @@
 {
   "name": "image-converter",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Conversor de imagens com interface gráfica",
   "main": "main.js",
   "scripts": {

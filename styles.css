@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   Image Converter — NovaData — Dracula (Default)
+   Image Converter — NovaData — Nord (Default)
    ═══════════════════════════════════════════════════════ */
 
 * {
@@ -9,34 +9,34 @@
 }
 
 :root {
-  --bg-base: #282a36;
-  --bg-surface: #323445;
-  --bg-elevated: #3c3f58;
-  --bg-input: #21222c;
-  --accent: #bd93f9;
-  --accent-hover: #caa8fc;
-  --accent-glow: rgba(189, 147, 249, 0.25);
-  --accent-red: #ff5555;
-  --accent-gradient: linear-gradient(135deg, #bd93f9, #ff79c6);
-  --text-primary: #f8f8f2;
-  --text-secondary: #c0b8d6;
-  --text-muted: #899bd1;
-  --success: #50fa7b;
-  --success-glow: rgba(80, 250, 123, 0.25);
-  --success-bg: rgba(80, 250, 123, 0.12);
-  --success-border: rgba(80, 250, 123, 0.25);
-  --warning: #f1fa8c;
-  --error: #ff5555;
-  --error-glow: rgba(255, 85, 85, 0.25);
-  --error-bg: rgba(255, 85, 85, 0.12);
-  --error-border: rgba(255, 85, 85, 0.25);
-  --border: #44475a;
-  --border-hover: #565973;
-  --overlay-bg: rgba(0, 0, 0, 0.55);
-  --overlay-content: rgba(40, 42, 54, 0.95);
-  --shadow-sm: 0 .3rem 1rem rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 .5rem 2rem rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+  --bg-base: #2e3440;
+  --bg-surface: #3b4252;
+  --bg-elevated: #434c5e;
+  --bg-input: #2e3440;
+  --accent: #88c0d0;
+  --accent-hover: #8fbcbb;
+  --accent-glow: rgba(136, 192, 208, 0.25);
+  --accent-red: #bf616a;
+  --accent-gradient: linear-gradient(135deg, #88c0d0, #5e81ac);
+  --text-primary: #eceff4;
+  --text-secondary: #d8dee9;
+  --text-muted: #7b88a1;
+  --success: #a3be8c;
+  --success-glow: rgba(163, 190, 140, 0.25);
+  --success-bg: rgba(163, 190, 140, 0.15);
+  --success-border: rgba(163, 190, 140, 0.25);
+  --warning: #ebcb8b;
+  --error: #bf616a;
+  --error-glow: rgba(191, 97, 106, 0.25);
+  --error-bg: rgba(191, 97, 106, 0.15);
+  --error-border: rgba(191, 97, 106, 0.25);
+  --border: #4c566a;
+  --border-hover: #5e6b82;
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --overlay-content: rgba(46, 52, 64, 0.95);
+  --shadow-sm: 0 .3rem 1rem rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 .5rem 2rem rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.35);
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-bg-hover: rgba(255, 255, 255, 0.1);
   --glass-border: rgba(255, 255, 255, 0.08);
@@ -79,35 +79,36 @@
   --glass-border: rgba(0, 0, 0, 0.08);
 }
 
-/* ─── Nord Theme ──────────────────────────────────────── */
-[data-theme="nord"] {
-  --bg-base: #2e3440;
-  --bg-surface: #3b4252;
-  --bg-elevated: #434c5e;
-  --bg-input: #2e3440;
-  --accent: #88c0d0;
-  --accent-hover: #8fbcbb;
-  --accent-glow: rgba(136, 192, 208, 0.25);
-  --accent-gradient: linear-gradient(135deg, #88c0d0, #5e81ac);
-  --text-primary: #eceff4;
-  --text-secondary: #d8dee9;
-  --text-muted: #7b88a1;
-  --success: #a3be8c;
-  --success-glow: rgba(163, 190, 140, 0.25);
-  --success-bg: rgba(163, 190, 140, 0.15);
-  --success-border: rgba(163, 190, 140, 0.25);
-  --warning: #ebcb8b;
-  --error: #bf616a;
-  --error-glow: rgba(191, 97, 106, 0.25);
-  --error-bg: rgba(191, 97, 106, 0.15);
-  --error-border: rgba(191, 97, 106, 0.25);
-  --border: #4c566a;
-  --border-hover: #5e6b82;
-  --overlay-bg: rgba(0, 0, 0, 0.5);
-  --overlay-content: rgba(46, 52, 64, 0.95);
-  --shadow-sm: 0 .3rem 1rem rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 .5rem 2rem rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.35);
+/* ─── Dracula Theme ───────────────────────────────────── */
+[data-theme="dracula"] {
+  --bg-base: #282a36;
+  --bg-surface: #323445;
+  --bg-elevated: #3c3f58;
+  --bg-input: #21222c;
+  --accent: #bd93f9;
+  --accent-hover: #caa8fc;
+  --accent-glow: rgba(189, 147, 249, 0.25);
+  --accent-red: #ff5555;
+  --accent-gradient: linear-gradient(135deg, #bd93f9, #ff79c6);
+  --text-primary: #f8f8f2;
+  --text-secondary: #c0b8d6;
+  --text-muted: #899bd1;
+  --success: #50fa7b;
+  --success-glow: rgba(80, 250, 123, 0.25);
+  --success-bg: rgba(80, 250, 123, 0.12);
+  --success-border: rgba(80, 250, 123, 0.25);
+  --warning: #f1fa8c;
+  --error: #ff5555;
+  --error-glow: rgba(255, 85, 85, 0.25);
+  --error-bg: rgba(255, 85, 85, 0.12);
+  --error-border: rgba(255, 85, 85, 0.25);
+  --border: #44475a;
+  --border-hover: #565973;
+  --overlay-bg: rgba(0, 0, 0, 0.55);
+  --overlay-content: rgba(40, 42, 54, 0.95);
+  --shadow-sm: 0 .3rem 1rem rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 .5rem 2rem rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.5);
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-bg-hover: rgba(255, 255, 255, 0.1);
   --glass-border: rgba(255, 255, 255, 0.08);
@@ -501,7 +502,7 @@ header h1 {
 .list-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* justify-content: space-between; */
   padding: .6rem 1rem;
   border-bottom: .1rem solid var(--border);
   background: var(--bg-surface);
@@ -1807,7 +1808,7 @@ footer {
   align-items: center;
   gap: .4rem;
   flex: 1;
-  max-width: 25rem;
+  max-width: 21rem;
 }
 
 .search-filter {

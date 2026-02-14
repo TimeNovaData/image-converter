@@ -4,6 +4,9 @@ const fs = require('fs')
 const os = require('os')
 const sharp = require('sharp')
 
+// Limit sharp threads to avoid hogging CPU with many files
+sharp.concurrency(2)
+
 try { require('electron-reloader')(module) } catch {}
 
 // Remove the default Electron menu bar
@@ -25,7 +28,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, 'icon.png'),
-    backgroundColor: '#282a36'
+    backgroundColor: '#2e3440'
   })
 
   mainWindow.loadFile('index.html')
@@ -93,11 +96,14 @@ ipcMain.handle('select-images', async () => {
     ]
   })
   if (result.canceled) return []
-  return result.filePaths.map(fp => ({
-    path: fp,
-    name: path.basename(fp),
-    size: fs.statSync(fp).size
-  }))
+  const images = []
+  for (const fp of result.filePaths) {
+    try {
+      const stat = await fs.promises.stat(fp)
+      images.push({ path: fp, name: path.basename(fp), size: stat.size })
+    } catch { /* skip */ }
+  }
+  return images
 })
 
 // Selecionar pasta e retornar imagens nela
@@ -107,12 +113,14 @@ ipcMain.handle('select-folder-images', async () => {
   })
   if (result.canceled || !result.filePaths[0]) return { folder: null, images: [] }
   const folder = result.filePaths[0]
-  const images = getImagesFromFolder(folder).map(fp => ({
-    path: fp,
-    name: path.basename(fp),
-    size: fs.statSync(fp).size,
-    relativePath: path.relative(folder, fp)
-  }))
+  const filePaths = getImagesFromFolder(folder)
+  const images = []
+  for (const fp of filePaths) {
+    try {
+      const stat = await fs.promises.stat(fp)
+      images.push({ path: fp, name: path.basename(fp), size: stat.size, relativePath: path.relative(folder, fp) })
+    } catch { /* skip */ }
+  }
   return { folder, images }
 })
 
@@ -123,18 +131,21 @@ ipcMain.handle('resolve-dropped-paths', async (_event, paths) => {
 
   for (const p of paths) {
     try {
-      const stat = fs.statSync(p)
+      const stat = await fs.promises.stat(p)
       if (stat.isDirectory()) {
         sourceFolders.push(p)
         const found = getImagesFromFolder(p)
         for (const fp of found) {
-          images.push({
-            path: fp,
-            name: path.basename(fp),
-            size: fs.statSync(fp).size,
-            relativePath: path.relative(p, fp),
-            sourceFolder: p
-          })
+          try {
+            const fStat = await fs.promises.stat(fp)
+            images.push({
+              path: fp,
+              name: path.basename(fp),
+              size: fStat.size,
+              relativePath: path.relative(p, fp),
+              sourceFolder: p
+            })
+          } catch { /* skip */ }
         }
       } else {
         const ext = path.extname(p).toLowerCase()
@@ -148,7 +159,7 @@ ipcMain.handle('resolve-dropped-paths', async (_event, paths) => {
           })
         }
       }
-    } catch (err) {
+    } catch {
       // ignora arquivos inacessíveis
     }
   }
@@ -326,7 +337,8 @@ async function processImage(imagePath, sourceFolder, outputFolder, format, maxSi
   const originalSize = fs.statSync(imagePath).size
 
   try {
-    const metadata = await sharp(imagePath).metadata()
+    let inst = sharp(imagePath)
+    const metadata = await inst.metadata()
     let { width, height } = metadata
 
     let needsResize = false
@@ -341,7 +353,8 @@ async function processImage(imagePath, sourceFolder, outputFolder, format, maxSi
       }
     }
 
-    let inst = sharp(imagePath)
+    // Re-create pipeline (sharp caches input after metadata)
+    inst = sharp(imagePath)
     if (needsResize) inst = inst.resize(width, height)
 
     // Metadata handling

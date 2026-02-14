@@ -57,7 +57,7 @@ let isConverting = false
 
 // ── Theme helpers ────────────────────────────────────
 function applyTheme(themeName) {
-  if (themeName === 'dracula') {
+  if (themeName === 'nord') {
     document.documentElement.removeAttribute('data-theme')
   } else {
     document.documentElement.setAttribute('data-theme', themeName)
@@ -78,7 +78,7 @@ async function init() {
   } catch { /* fallback: empty */ }
 
   // Restore theme from localStorage
-  const savedTheme = localStorage.getItem('theme') || 'dracula'
+  const savedTheme = localStorage.getItem('theme') || 'nord'
   applyTheme(savedTheme)
 
   setupEvents()
@@ -194,6 +194,8 @@ function setupEvents() {
   // Clear / remove
   btnClearAll.addEventListener('click', () => {
     images = []
+    imagePathSet.clear()
+    thumbQueue = []
     nextId = 1
     renderAll()
     summaryPanel.style.display = 'none'
@@ -209,6 +211,8 @@ function setupEvents() {
       `${count} imagem(ns) convertida(s) serão removidas da lista (os arquivos não serão deletados).`,
       'Remover',
       () => {
+        const removed = images.filter(img => img.status === 'success')
+        removed.forEach(img => imagePathSet.delete(img.path))
         images = images.filter(img => img.status !== 'success')
         renderAll()
         toast(`${count} imagem(ns) removida(s)`, 'info')
@@ -326,11 +330,13 @@ function setupEvents() {
 }
 
 // ── Add images to state ──────────────────────────────
+const imagePathSet = new Set() // fast dedupe lookup
+
 function addImages(found) {
   let added = 0
   for (const f of found) {
-    // Dedupe by path
-    if (images.some(i => i.path === f.path)) continue
+    if (imagePathSet.has(f.path)) continue
+    imagePathSet.add(f.path)
     images.push({
       id: nextId++,
       path: f.path,
@@ -338,7 +344,7 @@ function addImages(found) {
       size: f.size,
       sourceFolder: f.sourceFolder || '',
       relativePath: f.relativePath || f.name,
-      status: 'pending', // pending | success | error
+      status: 'pending',
       result: null,
       thumbLoaded: false
     })
@@ -365,16 +371,18 @@ function renderAll() {
   updateSelectionInfo()
   updateConvertButton()
 
-  // Rebuild list
-  imageList.innerHTML = ''
+  // Rebuild list with DocumentFragment (single DOM reflow)
+  const frag = document.createDocumentFragment()
   for (const img of images) {
-    imageList.appendChild(createCard(img))
+    frag.appendChild(createCard(img))
   }
+  imageList.innerHTML = ''
+  imageList.appendChild(frag)
 
   // Apply search filter if active
   applySearchFilter()
 
-  // Lazy-load thumbnails
+  // Lazy-load thumbnails in batches
   loadThumbnails()
 }
 
@@ -560,6 +568,7 @@ function createCard(img) {
 
   // Remove button
   const btnRemove = createTinyBtn('close', 'Remover da lista', () => {
+    imagePathSet.delete(img.path)
     images = images.filter(i => i.id !== img.id)
     renderAll()
   })
@@ -600,24 +609,43 @@ function updateCard(img) {
   updateConvertButton()
 }
 
-// ── Thumbnails async ─────────────────────────────────
+// ── Thumbnails async (batched to avoid flooding IPC) ─
+let thumbQueue = []
+let thumbLoading = false
+const THUMB_BATCH_SIZE = 4
+
 async function loadThumbnails() {
+  // Queue up images that need thumbnails
   for (const img of images) {
     if (img.thumbLoaded) continue
     img.thumbLoaded = true
-
-    // Don't await — fire and forget per thumb
-    window.electronAPI.getThumbnail(img.path).then(src => {
-      if (src) {
-        img.thumbSrc = src
-        const card = imageList.querySelector(`[data-id="${img.id}"]`)
-        if (card) {
-          const thumbEl = card.querySelector('.card-thumb')
-          thumbEl.innerHTML = `<img src="${src}" alt="">`
-        }
-      }
-    }).catch(() => {})
+    thumbQueue.push(img)
   }
+  processThumbQueue()
+}
+
+async function processThumbQueue() {
+  if (thumbLoading) return
+  thumbLoading = true
+
+  while (thumbQueue.length > 0) {
+    const batch = thumbQueue.splice(0, THUMB_BATCH_SIZE)
+    await Promise.all(batch.map(async (img) => {
+      try {
+        const src = await window.electronAPI.getThumbnail(img.path)
+        if (src) {
+          img.thumbSrc = src
+          const card = imageList.querySelector(`[data-id="${img.id}"]`)
+          if (card) {
+            const thumbEl = card.querySelector('.card-thumb')
+            thumbEl.innerHTML = `<img src="${src}" alt="">`
+          }
+        }
+      } catch { /* skip */ }
+    }))
+  }
+
+  thumbLoading = false
 }
 
 // ── Conversion ───────────────────────────────────────
