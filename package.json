@@ -1,6 +1,6 @@
 {
   "name": "image-converter",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Conversor de imagens com interface gráfica",
   "main": "main.js",
   "scripts": {
@@ -19,6 +19,8 @@
     "electron-reloader": "^1.2.3"
   },
   "dependencies": {
+    "choices.js": "11.0.3",
+    "lottie-web": "^5.13.0",
     "sharp": "^0.33.2"
   },
   "build": {

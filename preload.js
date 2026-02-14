@@ -15,14 +15,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Drag & drop
   resolveDroppedPaths: (paths) => ipcRenderer.invoke('resolve-dropped-paths', paths),
 
+  // Clipboard
+  pasteFromClipboard: () => ipcRenderer.invoke('paste-from-clipboard'),
+
   // Thumbnails
   getThumbnail: (imagePath) => ipcRenderer.invoke('get-thumbnail', imagePath),
   getFullImage: (imagePath) => ipcRenderer.invoke('get-full-image', imagePath),
 
   // Conversão
   processImages: (options) => ipcRenderer.invoke('process-images', options),
+  cancelConversion: () => ipcRenderer.invoke('cancel-conversion'),
   onProgress: (callback) => {
     ipcRenderer.removeAllListeners('progress')
     ipcRenderer.on('progress', (_event, data) => callback(data))
-  }
+  },
+
+  // Notificação
+  showNotification: ({ title, body }) => ipcRenderer.invoke('show-notification', { title, body }),
+  isWindowFocused: () => ipcRenderer.invoke('is-window-focused')
 })

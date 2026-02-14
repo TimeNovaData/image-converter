@@ -1,11 +1,15 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, Notification, Menu } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const os = require('os')
 const sharp = require('sharp')
 
 try { require('electron-reloader')(module) } catch {}
 
-const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp']
+// Remove the default Electron menu bar
+Menu.setApplicationMenu(null)
+
+const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.avif']
 
 let mainWindow
 
@@ -14,14 +18,14 @@ function createWindow() {
     width: 1100,
     height: 780,
     minWidth: 900,
-    minHeight: 650,
+    minHeight: 640,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, 'icon.png'),
-    backgroundColor: '#0f0f1a'
+    backgroundColor: '#282a36'
   })
 
   mainWindow.loadFile('index.html')
@@ -85,7 +89,7 @@ ipcMain.handle('select-images', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile', 'multiSelections'],
     filters: [
-      { name: 'Imagens', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp'] }
+      { name: 'Imagens', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'avif'] }
     ]
   })
   if (result.canceled) return []
@@ -186,9 +190,46 @@ ipcMain.handle('get-full-image', async (_event, imagePath) => {
   }
 })
 
+// ── Colar imagem do clipboard ─────────────────────────────
+ipcMain.handle('paste-from-clipboard', async () => {
+  const img = clipboard.readImage()
+  if (img.isEmpty()) return null
+  const buffer = img.toPNG()
+  const tmpPath = path.join(os.tmpdir(), `clipboard_${Date.now()}.png`)
+  fs.writeFileSync(tmpPath, buffer)
+  return {
+    path: tmpPath,
+    name: `clipboard_${Date.now()}.png`,
+    size: buffer.length,
+    sourceFolder: os.tmpdir(),
+    relativePath: `clipboard_${Date.now()}.png`
+  }
+})
+
+// ── Notificação nativa ───────────────────────────────────
+ipcMain.handle('show-notification', async (_event, { title, body }) => {
+  if (Notification.isSupported()) {
+    const notif = new Notification({ title, body })
+    notif.show()
+  }
+})
+
+ipcMain.handle('is-window-focused', () => {
+  return mainWindow && mainWindow.isFocused()
+})
+
 // ── Processar imagens ────────────────────────────────────
+let cancelConversion = false
+
+ipcMain.handle('cancel-conversion', () => {
+  cancelConversion = true
+  return { success: true }
+})
+
 ipcMain.handle('process-images', async (_event, options) => {
-  const { files, outputFolder, format, maxSize, quality, keepStructure } = options
+  const { files, outputFolder, format, maxSize, quality, keepStructure, prefix, suffix, stripMetadata } = options
+
+  cancelConversion = false
 
   try {
     if (!fs.existsSync(outputFolder)) {
@@ -198,10 +239,19 @@ ipcMain.handle('process-images', async (_event, options) => {
     const results = []
 
     for (let i = 0; i < files.length; i++) {
+      if (cancelConversion) {
+        mainWindow.webContents.send('progress', {
+          current: i,
+          total: files.length,
+          cancelled: true
+        })
+        return { success: true, results, cancelled: true }
+      }
+
       const fileInfo = files[i]
       const imagePath = fileInfo.path
       const sourceFolder = fileInfo.sourceFolder || path.dirname(imagePath)
-      const result = await processImage(imagePath, sourceFolder, outputFolder, format, maxSize, quality, keepStructure)
+      const result = await processImage(imagePath, sourceFolder, outputFolder, format, maxSize, quality, keepStructure, prefix || '', suffix || '', stripMetadata !== false)
       results.push(result)
 
       mainWindow.webContents.send('progress', {
@@ -242,7 +292,7 @@ function getImagesFromFolder(folder, resultado = []) {
   return resultado
 }
 
-async function processImage(imagePath, sourceFolder, outputFolder, format, maxSize, quality, keepStructure) {
+async function processImage(imagePath, sourceFolder, outputFolder, format, maxSize, quality, keepStructure, prefix = '', suffix = '', stripMetadata = true) {
   const fileName = path.basename(imagePath)
   const nameWithoutExt = path.parse(fileName).name
   const originalExt = path.extname(fileName).toLowerCase()
@@ -251,6 +301,9 @@ async function processImage(imagePath, sourceFolder, outputFolder, format, maxSi
   if (format === 'webp') outputExt = '.webp'
   else if (format === 'jpg') outputExt = '.jpg'
   else if (format === 'png') outputExt = '.png'
+  else if (format === 'avif') outputExt = '.avif'
+
+  const finalName = prefix + nameWithoutExt + suffix
 
   let finalOutputFolder = outputFolder
   if (keepStructure) {
@@ -263,7 +316,13 @@ async function processImage(imagePath, sourceFolder, outputFolder, format, maxSi
     }
   }
 
-  const outputPath = path.join(finalOutputFolder, nameWithoutExt + outputExt)
+  // Overwrite protection — add _1, _2, etc. if file exists
+  let outputPath = path.join(finalOutputFolder, finalName + outputExt)
+  let counter = 1
+  while (fs.existsSync(outputPath)) {
+    outputPath = path.join(finalOutputFolder, finalName + `_${counter}` + outputExt)
+    counter++
+  }
   const originalSize = fs.statSync(imagePath).size
 
   try {
@@ -285,16 +344,24 @@ async function processImage(imagePath, sourceFolder, outputFolder, format, maxSi
     let inst = sharp(imagePath)
     if (needsResize) inst = inst.resize(width, height)
 
+    // Metadata handling
+    if (!stripMetadata) {
+      inst = inst.withMetadata()
+    }
+
     if (format === 'webp') {
       inst = inst.webp({ effort: 6, lossless: false, quality: quality || 90, smartSubsample: true })
     } else if (format === 'jpg') {
       inst = inst.jpeg({ quality: quality || 90 })
     } else if (format === 'png') {
       inst = inst.png({ compressionLevel: 9 })
+    } else if (format === 'avif') {
+      inst = inst.avif({ quality: quality || 50, effort: 4 })
     } else {
       if (originalExt === '.webp') inst = inst.webp({ quality: quality || 90 })
       else if (['.jpg', '.jpeg'].includes(originalExt)) inst = inst.jpeg({ quality: quality || 90 })
       else if (originalExt === '.png') inst = inst.png({ compressionLevel: 9 })
+      else if (originalExt === '.avif') inst = inst.avif({ quality: quality || 50 })
     }
 
     await inst.toFile(outputPath)
@@ -305,7 +372,7 @@ async function processImage(imagePath, sourceFolder, outputFolder, format, maxSi
       fileName,
       inputPath: imagePath,
       outputPath,
-      outputFileName: nameWithoutExt + outputExt,
+      outputFileName: path.basename(outputPath),
       originalSize,
       convertedSize,
       saved: originalSize - convertedSize,
