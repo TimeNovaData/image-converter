@@ -1,46 +1,61 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const sharp = require('sharp')
+
+try { require('electron-reloader')(module) } catch {}
+
+const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp']
 
 let mainWindow
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 700,
+    width: 1100,
+    height: 780,
+    minWidth: 900,
+    minHeight: 650,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, 'icon.png'),
-    backgroundColor: '#1a1a2e'
+    backgroundColor: '#0f0f1a'
   })
 
   mainWindow.loadFile('index.html')
-  
-  // Descomente para abrir DevTools
   // mainWindow.webContents.openDevTools()
 }
 
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
-  }
+  if (BrowserWindow.getAllWindows().length === 0) createWindow()
 })
 
-// Handler para abrir pasta no Explorer
-ipcMain.handle('open-folder', async (event, folderPath) => {
-  const { shell } = require('electron')
+// ── IPC Handlers ─────────────────────────────────────────
+
+// Retorna o caminho da pasta Downloads do usuário
+ipcMain.handle('get-downloads-path', () => {
+  return app.getPath('downloads')
+})
+
+// Abre um arquivo no aplicativo padrão do SO
+ipcMain.handle('open-file', async (_event, filePath) => {
+  if (filePath && fs.existsSync(filePath)) {
+    await shell.openPath(filePath)
+    return true
+  }
+  return false
+})
+
+// Abre uma pasta no Explorer
+ipcMain.handle('open-folder', async (_event, folderPath) => {
   if (folderPath && fs.existsSync(folderPath)) {
     shell.openPath(folderPath)
     return true
@@ -48,15 +63,16 @@ ipcMain.handle('open-folder', async (event, folderPath) => {
   return false
 })
 
-// Handler para selecionar pasta de entrada
-ipcMain.handle('select-input-folder', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory']
-  })
-  return result.filePaths[0] || null
+// Mostra item no Explorer (seleciona o arquivo)
+ipcMain.handle('show-item-in-folder', async (_event, filePath) => {
+  if (filePath && fs.existsSync(filePath)) {
+    shell.showItemInFolder(filePath)
+    return true
+  }
+  return false
 })
 
-// Handler para selecionar pasta de saída
+// Selecionar pasta de saída
 ipcMain.handle('select-output-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory', 'createDirectory']
@@ -64,98 +80,196 @@ ipcMain.handle('select-output-folder', async () => {
   return result.filePaths[0] || null
 })
 
-// Handler para processar imagens
-ipcMain.handle('process-images', async (event, options) => {
-  const { inputFolder, outputFolder, format, maxSize, quality, keepStructure } = options
-  
+// Selecionar imagens via dialog
+ipcMain.handle('select-images', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: 'Imagens', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp'] }
+    ]
+  })
+  if (result.canceled) return []
+  return result.filePaths.map(fp => ({
+    path: fp,
+    name: path.basename(fp),
+    size: fs.statSync(fp).size
+  }))
+})
+
+// Selecionar pasta e retornar imagens nela
+ipcMain.handle('select-folder-images', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory']
+  })
+  if (result.canceled || !result.filePaths[0]) return { folder: null, images: [] }
+  const folder = result.filePaths[0]
+  const images = getImagesFromFolder(folder).map(fp => ({
+    path: fp,
+    name: path.basename(fp),
+    size: fs.statSync(fp).size,
+    relativePath: path.relative(folder, fp)
+  }))
+  return { folder, images }
+})
+
+// Recebe array de paths (arquivos e/ou pastas) → retorna lista de imagens
+ipcMain.handle('resolve-dropped-paths', async (_event, paths) => {
+  const images = []
+  const sourceFolders = []
+
+  for (const p of paths) {
+    try {
+      const stat = fs.statSync(p)
+      if (stat.isDirectory()) {
+        sourceFolders.push(p)
+        const found = getImagesFromFolder(p)
+        for (const fp of found) {
+          images.push({
+            path: fp,
+            name: path.basename(fp),
+            size: fs.statSync(fp).size,
+            relativePath: path.relative(p, fp),
+            sourceFolder: p
+          })
+        }
+      } else {
+        const ext = path.extname(p).toLowerCase()
+        if (SUPPORTED_EXTENSIONS.includes(ext)) {
+          images.push({
+            path: p,
+            name: path.basename(p),
+            size: stat.size,
+            relativePath: path.basename(p),
+            sourceFolder: path.dirname(p)
+          })
+        }
+      }
+    } catch (err) {
+      // ignora arquivos inacessíveis
+    }
+  }
+
+  return { images, sourceFolders }
+})
+
+// Gera thumbnail base64 de uma imagem (150×150)
+ipcMain.handle('get-thumbnail', async (_event, imagePath) => {
   try {
-    // Criar pasta de saída se não existir
+    const buffer = await sharp(imagePath)
+      .resize(150, 150, { fit: 'cover', position: 'centre' })
+      .jpeg({ quality: 60 })
+      .toBuffer()
+    return 'data:image/jpeg;base64,' + buffer.toString('base64')
+  } catch {
+    return null
+  }
+})
+
+// Gera imagem maior para comparação (max 1200px)
+ipcMain.handle('get-full-image', async (_event, imagePath) => {
+  try {
+    const meta = await sharp(imagePath).metadata()
+    const maxDim = 1200
+    const resizeOpts = {}
+    if (meta.width > maxDim || meta.height > maxDim) {
+      resizeOpts.width = maxDim
+      resizeOpts.height = maxDim
+      resizeOpts.fit = 'inside'
+    }
+    const buffer = await sharp(imagePath)
+      .resize(resizeOpts.width ? resizeOpts : undefined)
+      .jpeg({ quality: 90 })
+      .toBuffer()
+    return 'data:image/jpeg;base64,' + buffer.toString('base64')
+  } catch {
+    return null
+  }
+})
+
+// ── Processar imagens ────────────────────────────────────
+ipcMain.handle('process-images', async (_event, options) => {
+  const { files, outputFolder, format, maxSize, quality, keepStructure } = options
+
+  try {
     if (!fs.existsSync(outputFolder)) {
       fs.mkdirSync(outputFolder, { recursive: true })
     }
 
-    const images = getImagesFromFolder(inputFolder)
     const results = []
-    
-    for (let i = 0; i < images.length; i++) {
-      const imagePath = images[i]
-      const result = await processImage(imagePath, inputFolder, outputFolder, format, maxSize, quality, keepStructure)
+
+    for (let i = 0; i < files.length; i++) {
+      const fileInfo = files[i]
+      const imagePath = fileInfo.path
+      const sourceFolder = fileInfo.sourceFolder || path.dirname(imagePath)
+      const result = await processImage(imagePath, sourceFolder, outputFolder, format, maxSize, quality, keepStructure)
       results.push(result)
-      
-      // Enviar progresso
+
       mainWindow.webContents.send('progress', {
         current: i + 1,
-        total: images.length,
-        file: result.fileName
+        total: files.length,
+        file: result.fileName,
+        filePath: imagePath,
+        result
       })
     }
-    
+
     return { success: true, results }
   } catch (error) {
     return { success: false, error: error.message }
   }
 })
 
+// ── Helpers ──────────────────────────────────────────────
+
 function getImagesFromFolder(folder, resultado = []) {
-  const arquivos = fs.readdirSync(folder)
-  
-  arquivos.forEach(arquivo => {
-    const caminho = path.join(folder, arquivo)
-    const stat = fs.statSync(caminho)
-    
-    if (stat && stat.isDirectory()) {
-      getImagesFromFolder(caminho, resultado)
-    } else {
-      const ext = path.extname(arquivo).toLowerCase()
-      if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'].includes(ext)) {
-        resultado.push(caminho)
-      }
+  try {
+    const arquivos = fs.readdirSync(folder)
+    for (const arquivo of arquivos) {
+      const caminho = path.join(folder, arquivo)
+      try {
+        const stat = fs.statSync(caminho)
+        if (stat.isDirectory()) {
+          getImagesFromFolder(caminho, resultado)
+        } else {
+          const ext = path.extname(arquivo).toLowerCase()
+          if (SUPPORTED_EXTENSIONS.includes(ext)) {
+            resultado.push(caminho)
+          }
+        }
+      } catch { /* skip inaccessible */ }
     }
-  })
-  
+  } catch { /* skip inaccessible folder */ }
   return resultado
 }
 
-async function processImage(imagePath, inputFolder, outputFolder, format, maxSize, quality, keepStructure) {
+async function processImage(imagePath, sourceFolder, outputFolder, format, maxSize, quality, keepStructure) {
   const fileName = path.basename(imagePath)
   const nameWithoutExt = path.parse(fileName).name
   const originalExt = path.extname(fileName).toLowerCase()
-  
-  // Determinar extensão de saída
+
   let outputExt = originalExt
-  if (format === 'webp') {
-    outputExt = '.webp'
-  } else if (format === 'jpg') {
-    outputExt = '.jpg'
-  } else if (format === 'png') {
-    outputExt = '.png'
-  }
-  // format === 'original' mantém a extensão original
-  
-  // Determinar pasta de saída (mantendo estrutura ou não)
+  if (format === 'webp') outputExt = '.webp'
+  else if (format === 'jpg') outputExt = '.jpg'
+  else if (format === 'png') outputExt = '.png'
+
   let finalOutputFolder = outputFolder
   if (keepStructure) {
-    const relativePath = path.relative(inputFolder, path.dirname(imagePath))
-    if (relativePath) {
+    const relativePath = path.relative(sourceFolder, path.dirname(imagePath))
+    if (relativePath && relativePath !== '.') {
       finalOutputFolder = path.join(outputFolder, relativePath)
-      // Criar subpasta se não existir
       if (!fs.existsSync(finalOutputFolder)) {
         fs.mkdirSync(finalOutputFolder, { recursive: true })
       }
     }
   }
-  
+
   const outputPath = path.join(finalOutputFolder, nameWithoutExt + outputExt)
-  
-  // Obter tamanho original
-  const statsOriginal = fs.statSync(imagePath)
-  const originalSize = statsOriginal.size
-  
+  const originalSize = fs.statSync(imagePath).size
+
   try {
     const metadata = await sharp(imagePath).metadata()
     let { width, height } = metadata
-    
-    // Redimensionar se necessário
+
     let needsResize = false
     if (maxSize && (width > maxSize || height > maxSize)) {
       needsResize = true
@@ -167,44 +281,30 @@ async function processImage(imagePath, inputFolder, outputFolder, format, maxSiz
         height = maxSize
       }
     }
-    
-    let sharpInstance = sharp(imagePath)
-    
-    if (needsResize) {
-      sharpInstance = sharpInstance.resize(width, height)
-    }
-    
-    // Aplicar formato
+
+    let inst = sharp(imagePath)
+    if (needsResize) inst = inst.resize(width, height)
+
     if (format === 'webp') {
-      sharpInstance = sharpInstance.webp({ 
-        effort: 6, 
-        lossless: false, 
-        quality: quality || 90,
-        smartSubsample: true 
-      })
+      inst = inst.webp({ effort: 6, lossless: false, quality: quality || 90, smartSubsample: true })
     } else if (format === 'jpg') {
-      sharpInstance = sharpInstance.jpeg({ quality: quality || 90 })
+      inst = inst.jpeg({ quality: quality || 90 })
     } else if (format === 'png') {
-      sharpInstance = sharpInstance.png({ compressionLevel: 9 })
+      inst = inst.png({ compressionLevel: 9 })
     } else {
-      // Manter formato original
-      if (originalExt === '.webp') {
-        sharpInstance = sharpInstance.webp({ quality: quality || 90 })
-      } else if (originalExt === '.jpg' || originalExt === '.jpeg') {
-        sharpInstance = sharpInstance.jpeg({ quality: quality || 90 })
-      } else if (originalExt === '.png') {
-        sharpInstance = sharpInstance.png({ compressionLevel: 9 })
-      }
+      if (originalExt === '.webp') inst = inst.webp({ quality: quality || 90 })
+      else if (['.jpg', '.jpeg'].includes(originalExt)) inst = inst.jpeg({ quality: quality || 90 })
+      else if (originalExt === '.png') inst = inst.png({ compressionLevel: 9 })
     }
-    
-    await sharpInstance.toFile(outputPath)
-    
-    // Obter tamanho do arquivo convertido
-    const statsConverted = fs.statSync(outputPath)
-    const convertedSize = statsConverted.size
-    
+
+    await inst.toFile(outputPath)
+
+    const convertedSize = fs.statSync(outputPath).size
+
     return {
       fileName,
+      inputPath: imagePath,
+      outputPath,
       outputFileName: nameWithoutExt + outputExt,
       originalSize,
       convertedSize,
@@ -218,6 +318,8 @@ async function processImage(imagePath, inputFolder, outputFolder, format, maxSiz
   } catch (error) {
     return {
       fileName,
+      inputPath: imagePath,
+      outputPath: null,
       success: false,
       error: error.message
     }

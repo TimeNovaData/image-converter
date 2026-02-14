@@ -4,123 +4,253 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Image Converter - NovaData</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%237c5cfc'/%3E%3Cstop offset='100%25' stop-color='%23ff8a65'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='6' fill='url(%23g)'/%3E%3Cpath d='M8 20l4-5 3 3 5-7 4 9H8z' fill='white' opacity='0.9'/%3E%3Ccircle cx='11' cy='12' r='2.5' fill='white' opacity='0.9'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
+  <!-- Toast container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Drag overlay (full window) -->
+  <div id="dragOverlay" class="drag-overlay">
+    <div class="drag-overlay-content">
+      <div class="drag-icon">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 "/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <h2>Solte aqui</h2>
+      <p>Arraste imagens ou pastas para converter</p>
+    </div>
+  </div>
+
+  <div class="app-layout">
+    <!-- ─── Header ────────────────────────── -->
     <header>
-      <h1>🖼️ Image Converter</h1>
-      <p class="subtitle">Converta e otimize suas imagens facilmente</p>
+      <div class="header-inner">
+        <h1><span class="material-symbols-rounded header-icon">image</span> Image Converter</h1>
+        <p class="subtitle">Arraste imagens, converta e otimize em segundos</p>
+      </div>
     </header>
 
-    <main>
-      <!-- Seleção de Pastas -->
-      <section class="folder-section">
-        <div class="folder-box">
-          <label>📂 Pasta de Entrada</label>
-          <div class="folder-input">
-            <input type="text" id="inputFolder" placeholder="Selecione a pasta com as imagens..." readonly>
-            <button id="btnSelectInput" class="btn btn-secondary">Selecionar</button>
-            <button id="btnOpenInput" class="btn btn-icon" title="Abrir no Explorer" disabled>📁</button>
+    <!-- ─── Main content ──────────────────── -->
+    <div class="main-content">
+      
+      <!-- LEFT: Image list area -->
+      <div class="panel-images">
+        <!-- Drop zone / empty state -->
+        <div id="dropZone" class="drop-zone">
+          <div class="drop-zone-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+          </div>
+          <p class="drop-zone-title">Arraste imagens ou pastas aqui</p>
+          <p class="drop-zone-sub">ou use os botões abaixo</p>
+          <div class="drop-zone-buttons">
+            <button id="btnAddImages" class="btn btn-outline">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Adicionar Imagens
+            </button>
+            <button id="btnAddFolder" class="btn btn-outline">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              Adicionar Pasta
+            </button>
           </div>
         </div>
 
-        <div class="folder-box">
-          <label>📁 Pasta de Saída</label>
-          <div class="folder-input">
-            <input type="text" id="outputFolder" placeholder="Selecione onde salvar as imagens..." readonly>
-            <button id="btnSelectOutput" class="btn btn-secondary">Selecionar</button>
-            <button id="btnOpenOutput" class="btn btn-icon" title="Abrir no Explorer" disabled>📁</button>
+        <!-- Image list (hidden initially) -->
+        <div id="imageListWrapper" class="image-list-wrapper" style="display:none;">
+          <div class="list-toolbar">
+            <div class="list-toolbar-left">
+              <span id="imageCount" class="badge">0 imagens</span>
+              <button id="btnAddMore" class="btn btn-sm btn-ghost" data-tooltip="Adicionar mais">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Adicionar
+              </button>
+            </div>
+            <div class="list-toolbar-right">
+              <button id="btnRemoveConverted" class="btn btn-sm btn-ghost" data-tooltip="Remover convertidas" style="display:none;">
+                <span class="material-symbols-rounded">check_circle</span> Remover convertidas
+              </button>
+              <button id="btnClearAll" class="btn btn-sm btn-ghost-danger" data-tooltip="Limpar tudo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Limpar
+              </button>
+            </div>
+          </div>
+          <div id="imageList" class="image-list"></div>
+        </div>
+      </div>
+
+      <!-- Resize handle -->
+      <div id="resizeHandle" class="resize-handle"><div class="resize-handle-line"></div></div>
+
+      <!-- RIGHT: Options sidebar -->
+      <aside id="panelOptions" class="panel-options">
+         <!-- Summary (shown after conversion) -->
+        <div id="summaryPanel" class="summary-panel" style="display:none;">
+          <h3>Resultado</h3>
+          <div id="summaryContent" class="summary-content"></div>
+        </div>
+        <!-- Output folder -->
+        <div class="option-card">
+          <label class="option-label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Pasta de Saída
+          </label>
+          <div class="folder-input-row">
+            <input type="text" id="outputFolder" placeholder="Downloads" readonly>
+            <button id="btnSelectOutput" class="btn btn-icon-sm" data-tooltip="Selecionar pasta">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <button id="btnOpenOutput" class="btn btn-icon-sm" data-tooltip="Abrir no Explorer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </button>
           </div>
         </div>
-      </section>
 
-      <!-- Opções de Conversão -->
-      <section class="options-section">
-        <h2>⚙️ Opções de Conversão</h2>
-        
-        <div class="options-grid">
-          <div class="option-box">
-            <label>Formato de Saída</label>
-            <select id="format">
-              <option value="webp">WebP (Recomendado)</option>
-              <option value="jpg">JPEG</option>
-              <option value="png">PNG</option>
-              <option value="original">Manter Original</option>
-            </select>
-          </div>
-
-          <div class="option-box">
-            <label>Tamanho Máximo (px)</label>
-            <select id="maxSize">
-              <option value="">Sem limite</option>
-              <option value="3840">4K (3840px)</option>
-              <option value="2560">2K (2560px)</option>
-              <option value="1920" selected>Full HD (1920px)</option>
-              <option value="1280">HD (1280px)</option>
-              <option value="800">800px</option>
-              <option value="600">600px</option>
-              <option value="400">400px</option>
-              <option value="custom">Personalizado...</option>
-            </select>
-            <input type="number" id="customSize" class="custom-size-input" placeholder="Ex: 1024" min="50" max="10000" style="display: none;">
-          </div>
-
-          <div class="option-box">
-            <label>Qualidade: <span id="qualityValue">90</span>%</label>
-            <input type="range" id="quality" min="10" max="100" value="90">
-          </div>
-
-          <div class="option-box option-checkbox">
-            <label class="checkbox-label">
-              <input type="checkbox" id="keepStructure" checked>
-              <span>📁 Manter estrutura de pastas</span>
-            </label>
-            <small>Recria as subpastas da pasta de entrada na pasta de saída</small>
-          </div>
+        <!-- Format -->
+        <div class="option-card">
+          <label class="option-label">Formato de Saída</label>
+          <select id="format">
+            <option value="webp">WebP (Recomendado)</option>
+            <option value="jpg">JPEG</option>
+            <option value="png">PNG</option>
+            <option value="original">Manter Original</option>
+          </select>
         </div>
-      </section>
 
-      <!-- Botão de Conversão -->
-      <section class="action-section">
-        <button id="btnConvert" class="btn btn-primary btn-large" disabled>
-          🚀 Converter Imagens
+        <!-- Max size -->
+        <div class="option-card">
+          <label class="option-label">Tamanho Máximo (px)</label>
+          <select id="maxSize">
+            <option value="">Sem limite</option>
+            <option value="3840">4K (3840px)</option>
+            <option value="2560">2K (2560px)</option>
+            <option value="1920" selected>Full HD (1920px)</option>
+            <option value="1280">HD (1280px)</option>
+            <option value="800">800px</option>
+            <option value="600">600px</option>
+            <option value="400">400px</option>
+            <option value="custom">Personalizado...</option>
+          </select>
+          <input type="number" id="customSize" class="custom-size-input" placeholder="Ex: 1024" min="50" max="10000" style="display:none;">
+        </div>
+
+        <!-- Quality -->
+        <div class="option-card">
+          <label class="option-label">Qualidade: <strong id="qualityValue">90</strong>%</label>
+          <input type="range" id="quality" min="10" max="100" value="90">
+          <div class="range-labels"><span>10%</span><span>100%</span></div>
+        </div>
+
+        <!-- Keep structure -->
+        <div class="option-card">
+          <label class="checkbox-label">
+            <input type="checkbox" id="keepStructure" checked>
+            <span>Manter estrutura de pastas</span>
+          </label>
+          <small>Recria as subpastas da entrada na saída</small>
+        </div>
+
+       
+      </aside>
+    </div>
+
+    <!-- ─── Bottom action bar ─────────────── -->
+    <div class="action-bar">
+      <div class="action-bar-left">
+        <span id="selectionInfo" class="selection-info">Nenhuma imagem adicionada</span>
+      </div>
+      <div class="action-bar-right">
+        <button id="btnOpenOutputBar" class="btn btn-secondary btn-bar" data-tooltip="Abrir pasta de saída">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Abrir Pasta
         </button>
-      </section>
+        <button id="btnConvert" class="btn btn-primary btn-bar" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Converter
+        </button>
+      </div>
+    </div>
 
-      <!-- Progresso -->
-      <section class="progress-section" id="progressSection" style="display: none;">
-        <h2>📊 Progresso</h2>
-        <div class="progress-bar">
-          <div class="progress-fill" id="progressFill"></div>
+    <!-- ─── Global progress bar ───────────── -->
+    <div id="globalProgress" class="global-progress" style="display:none;">
+      <div class="global-progress-bar">
+        <div id="globalProgressFill" class="global-progress-fill"></div>
+      </div>
+      <span id="globalProgressText" class="global-progress-text">Preparando...</span>
+    </div>
+  </div>
+
+  <footer>
+    <p>Made with ❤️ by NovaData</p>
+  </footer>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-icon"><span class="material-symbols-rounded">delete</span></div>
+      <h3 id="confirmTitle" class="modal-title">Remover convertidas?</h3>
+      <p id="confirmMessage" class="modal-message">As imagens convertidas serão removidas da lista (os arquivos não serão deletados).</p>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="btn btn-secondary">Cancelar</button>
+        <button id="confirmOk" class="btn btn-primary">Remover</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compare Modal -->
+  <div id="compareModal" class="compare-overlay" style="display:none;">
+    <div class="compare-header">
+      <span id="compareTitle" class="compare-title"></span>
+      <div class="compare-toolbar">
+        <button id="compareZoomOut" class="compare-tool-btn" data-tooltip="Diminuir zoom">
+          <span class="material-symbols-rounded">zoom_out</span>
+        </button>
+        <span id="compareZoomLevel" class="compare-zoom-level">100%</span>
+        <button id="compareZoomIn" class="compare-tool-btn" data-tooltip="Aumentar zoom">
+          <span class="material-symbols-rounded">zoom_in</span>
+        </button>
+        <button id="compareZoomReset" class="compare-tool-btn" data-tooltip="Resetar zoom">
+          <span class="material-symbols-rounded">fit_screen</span>
+        </button>
+        <div class="compare-toolbar-divider"></div>
+        <button id="compareClose" class="compare-close-btn" data-tooltip="Fechar">✕</button>
+      </div>
+    </div>
+    <div class="compare-container" id="compareContainer">
+      <div class="compare-loading" id="compareLoading">
+        <div class="compare-spinner"></div>
+        <span>Carregando imagens...</span>
+      </div>
+      <img id="compareAfter" class="compare-img" alt="Convertida" draggable="false">
+      <div class="compare-before" id="compareBefore">
+        <img id="compareBeforeImg" class="compare-img" alt="Original" draggable="false">
+      </div>
+      <div class="compare-slider" id="compareSlider">
+        <div class="compare-slider-line"></div>
+        <div class="compare-slider-handle">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M7 4L3 10L7 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M13 4L17 10L13 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
-        <p id="progressText">Preparando...</p>
-      </section>
-
-      <!-- Resultados -->
-      <section class="results-section" id="resultsSection" style="display: none;">
-        <h2>✅ Resultados</h2>
-        <div class="summary" id="summary"></div>
-        <div class="results-table-container">
-          <table class="results-table">
-            <thead>
-              <tr>
-                <th>Arquivo</th>
-                <th>Original</th>
-                <th>Convertido</th>
-                <th>Economia</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="resultsBody"></tbody>
-          </table>
-        </div>
-      </section>
-    </main>
-
-    <footer>
-      <p>Made with ❤️ by Novadata</p>
-    </footer>
+      </div>
+      <div class="compare-label compare-label-left">Original</div>
+      <div class="compare-label compare-label-right">Convertida</div>
+    </div>
+    <div class="compare-info">
+      <span id="compareOrigSize" class="compare-info-tag">Original: —</span>
+      <span id="compareConvSize" class="compare-info-tag">Convertida: —</span>
+      <span id="compareSavings" class="compare-info-tag compare-savings"></span>
+    </div>
   </div>
 
   <script src="renderer.js"></script>
