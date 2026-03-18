@@ -1,6 +1,6 @@
 {
   "name": "image-converter",
-  "version": "3.1.0",
+  "version": "3.2.1",
   "description": "Conversor de imagens com interface gráfica",
   "main": "main.js",
   "scripts": {
@@ -8,6 +8,8 @@
     "dev": "electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
+    "build:win:installer": "electron-builder --win nsis",
+    "build:win:portable": "electron-builder --win portable",
     "build:linux": "electron-builder --linux",
     "build:all": "electron-builder --win --linux"
   },
@@ -26,6 +28,7 @@
   "build": {
     "appId": "com.novadata.imageconverter",
     "productName": "Image Converter",
+    "copyright": "Copyright © 2024-2026 NovaData",
     "directories": {
       "output": "dist"
     },
@@ -55,14 +58,28 @@
     "win": {
       "target": [
         {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
           "target": "portable",
           "arch": ["x64"]
         }
       ],
       "icon": "icon.png",
+      "legalTrademarks": "NovaData",
+      "requestedExecutionLevel": "asInvoker",
       "signAndEditExecutable": false,
       "asar": true,
       "asarUnpack": ["node_modules/sharp/**/*"]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "shortcutName": "Image Converter"
     },
     "linux": {
       "target": ["AppImage", "tar.gz"],
